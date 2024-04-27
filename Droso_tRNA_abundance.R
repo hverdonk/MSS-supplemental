@@ -1,0 +1,338 @@
+library(tidyverse)
+library(readxl)
+
+# Drosophila tRNA gene count numbers from doi: 10.17912/micropub.biology.000560
+tRNA_genecounts <- read_excel("~/Dropbox/Temple/pond-lab-research/Drosophila-tRNA/Extended_Data_Table_1.xlsx")
+# Drosophila tRNA isodecoder count numbers from https://doi.org/10.1016/j.molcel.2021.01.028
+# GEO Accession number GSE152621
+tRNA_abundance <- read_csv("~/Dropbox/Temple/pond-lab-research/Drosophila-tRNA/GSE152621_Dmel_anticodon_counts.csv")
+SRC <- read_csv("~/Dropbox/Temple/pond-lab-research/Drosophila-tRNA/20240321_drosophila_SynREVCodon_parsed.csv")
+joint_fit <- read_csv("https://raw.githubusercontent.com/veg/MSS-results/master/empirical-validation/drosophila/20240322-droso-500RandomAlignments-SynREVCodonjointfit-0.csv")
+# my hypotheses for which codons not present in tRNA are served by which isoacceptors
+# assume codons share an isoacceptor if they only differ at the wobble base and 
+#     - there is no other isoacceptor that only differs at the wobble base.
+#         - Tyr, His, Asn, Asp get their wobble bases modified to Queosine (https://www-ncbi-nlm-nih-gov.libproxy.temple.edu/pmc/articles/PMC8897278/)
+#     - one anticodon begins with A (which is modified to Inosine, a Guanine analog, for nearly all mature tRNAs) and the other anticodon begins with G
+#     - Crick's wobble hypothesis predicts that...
+#         - Gly: tRNA recognizing GGC also serves GGU, and the tRNA recognizing GGA also serves GGG
+#         - Arg: the tRNA recognizing CGU also serves CGC (confirmed by inosine modification) and the tRNA recognizing CGA also serves CGG
+# If a twofold redundant aa only has one isoacceptor listed, assume it translates both codons
+tRNA_predictions <- tibble(
+  aa = c(
+    "Ala", "Ala",
+    "Arg", "Arg", 
+    "Asn", "Gly", "Gly",
+    "Asp", "Cys", "His", 
+    "Ile", "Ile",
+    "Phe", 
+    "Pro", "Pro", "Ser", "Ser", "Ser", 
+    "Tyr", "Val", "Val", "Leu", "Leu", 
+    "Thr", "Thr"
+  ),
+  existing_codon = c(
+    "GCT", "GCT",
+    "CGT", "CGA", 
+    "AAC", "GGC", "GGA",
+    "GAC", "TGC", "CAC", 
+    "ATT", "ATT",
+    "TTC", 
+    "CCT", "CCT", "TCT", "TCT", "AGC", 
+    "TAC", "GTT", "GTT", "CTT", "CTT", 
+    "ACT", "ACT"
+  ),
+  new_codon = c(
+    "GCC", "GCA",
+    "CGC", "CGG",
+    "AAT", "GGT", "GGG",
+    "GAT", "TGT", "CAT", 
+    "ATC", "ATA", 
+    "TTT", 
+    "CCC", "CCA", "TCC", "TCA", "AGT", 
+    'TAT', "GTC", "GTA", "CTC", "CTA",
+    "ACC", "ACA"
+  ),
+  mod = c(
+    "Inosine", "Inosine", 
+    "Inosine", "Crick wobble",
+    "Queuosine", "Crick wobble", "Crick wobble",
+    "Queuosine", "twofold", "Queuosine", 
+    "Inosine", "Inosine",
+    "twofold", 
+    "Inosine", "Inosine", "Inosine", "Inosine", "twofold",
+    "Queuosine", "Inosine", "Inosine", "Inosine", "Inosine", 
+    "Inosine", "Inosine"
+  )
+
+)
+
+###############
+## Utilities ##
+###############
+reverse_complement <- function(seqs){
+  # input: vector of DNA sequences
+  # output: vector of reverse complements to input DNA sequences
+  # split each string into its individual characters, reverse them using the rev function, and then collapse them back into strings using sapply and paste
+  seqs <- sapply(seqs, function(x) paste(rev(str_split(x, pattern = "")[[1]]), collapse = ""))
+  # get complimentary DNA sequence
+  seqs <- seqs %>%
+    str_replace_all(pattern="A", "X") %>%
+    str_replace_all(pattern="T", "A") %>%
+    str_replace_all(pattern="X", "T") %>%
+    str_replace_all(pattern="G", "Z") %>%
+    str_replace_all(pattern="C", "G") %>%
+    str_replace_all(pattern="Z", "C")
+  seqs
+}
+
+
+# Create a tibble with amino acid codes
+amino_acids <- tibble(
+  Three_Letter_Code = c("Ala", "Arg", "Asn", "Asp", "Cys",
+                        "Gln", "Glu", "Gly", "His", "Ile",
+                        "Leu", "Lys", "Met", "Phe", "Pro",
+                        "Ser", "Thr", "Trp", "Tyr", "Val"),
+  One_Letter_Code = c("A", "R", "N", "D", "C",
+                      "Q", "E", "G", "H", "I",
+                      "L", "K", "M", "F", "P",
+                      "S", "T", "W", "Y", "V")
+)
+
+###############
+## tRNA DATA ##
+###############
+
+# format tRNA gene count data
+tRNA_genecounts_clean <- tRNA_genecounts %>% 
+  select(`FlyBase gene symbol`) %>%
+  separate_wider_delim(`FlyBase gene symbol`, delim="-", names=c("aa", "anticodon", NA, "pseudo")) %>%
+  separate_wider_delim(aa, delim=":", names=c(NA, "aa")) %>%
+  filter(str_detect(pseudo, pattern="Psi", negate=TRUE)) %>%
+  select(-pseudo) %>%
+  mutate(codon = reverse_complement(anticodon)) %>%
+  # count number of tRNA genes per anticodon
+  group_by(aa, anticodon, codon) %>%
+  summarise(gene_count = n(), .groups = "drop")
+
+
+# normalize read counts by total number of reads sequenced
+# tRNA genes are all roughly the same length (76-90 bp) so I chose NOT to normalize
+# by transcript length
+tRNA_abundance_clean <- tRNA_abundance %>%
+  rename("abundance_rep1" = `Dmel_BG3-c2_rep1`, "abundance_rep2" = `Dmel_BG3-c2_rep2`) %>%
+  mutate(cpm_rep1 = (abundance_rep1/sum(abundance_rep1))*1000000,
+         cpm_rep2 = (abundance_rep2/sum(abundance_rep2))*1000000) %>%
+  filter(!str_detect(Anticodon, "mito")) %>%
+  filter(!str_detect(Anticodon, "eColiLys")) %>%
+  separate_wider_delim(Anticodon, delim='-', names=c("aa", "anticodon"))
+
+
+# drop raw count data (optional, but makes the data cleaner and easier to work with)
+tRNA_abundance_clean <- tRNA_abundance_clean %>%
+  select(-abundance_rep1, -abundance_rep2)
+
+tRNA <- full_join(tRNA_genecounts_clean, tRNA_abundance_clean, by=c("aa", "anticodon"))
+
+
+###############################
+## SynREVCodon per-gene fits ##
+###############################
+# format SynREVCodon per-gene data
+means <- SRC %>%
+  summarise(across(everything(), mean)) %>%
+  pivot_longer(cols = everything(), names_to = "codon_pair", values_to = "mean_rate") %>%
+  separate_wider_delim(codon_pair, delim="_", names=c("aa", "codons")) %>%
+  separate_wider_delim(codons, delim=":", names=c("codon1", "codon2")) %>%
+  full_join(amino_acids, by=c("aa"="One_Letter_Code"))
+medians <- SRC %>%
+  summarise(across(everything(), median)) %>%
+  pivot_longer(cols = everything(), names_to = "codon_pair", values_to = "median_rate") %>%
+  separate_wider_delim(codon_pair, delim="_", names=c("aa", "codons")) %>%
+  separate_wider_delim(codons, delim=":", names=c("codon1", "codon2")) %>%
+  full_join(amino_acids, by=c("aa"="One_Letter_Code"))
+
+SRC_rollup <- full_join(means, medians) %>% 
+  filter(aa != "M", aa != "W")
+
+# merge tRNA isoacceptor count data for each codon we have info on, then add my tRNA predictions
+# NA codon entries are because not all codons were listed in the 
+# some tRNAs serve more than one codon, BUT I'm not sure which tRNAs serve which NA codons
+
+## CODON 1 ##
+SRC_tRNA_nopred <- SRC_rollup %>%
+  left_join(tRNA, by=c("codon1"="codon", "Three_Letter_Code"="aa")) %>%  # add predictions here if you can figure out the rest of the missing data
+  select(-aa) %>%
+  rename("codon1_tRNA_count"=gene_count, 
+         "anticodon1"=anticodon, 
+         "aa"=Three_Letter_Code, 
+         "codon1_cpm_rep1" = cpm_rep1, 
+         "codon1_cpm_rep2" = cpm_rep2
+         ) %>%
+  mutate(anticodon1 = reverse_complement(codon1))
+
+## CODON 2 ##
+SRC_tRNA_nopred <- SRC_tRNA_nopred %>% 
+  left_join(tRNA, by=c("codon2"="codon", "aa"="aa")) %>%
+  rename("codon2_tRNA_count"=gene_count, 
+         "anticodon2"=anticodon, 
+         "codon2_cpm_rep1" = cpm_rep1, 
+         "codon2_cpm_rep2" = cpm_rep2
+         ) %>%
+  mutate(anticodon2 = reverse_complement(codon2))
+
+
+# copy tRNA abundance data and gene count data to codons that are missing data
+# based on predictions of which codons share an isoacceptor
+predictions_subset <- filter(SRC_tRNA, codon1 %in% tRNA_predictions$present_codon) %>%  # find present_codons in codon1 column to extract their data
+  distinct(codon1, .keep_all=TRUE) %>%
+  select(codon1, codon1_tRNA_count, codon1_cpm_rep1, codon1_cpm_rep2) %>%
+  rename(present_codon="codon1", tRNA_count = "codon1_tRNA_count", cpm_rep1 = "codon1_cpm_rep1", cpm_rep2 = "codon1_cpm_rep2")
+
+predictions <- filter(SRC_tRNA, codon2 %in% tRNA_predictions$present_codon) %>%
+  distinct(codon2, .keep_all=TRUE) %>%
+  select(codon2, codon2_tRNA_count, codon2_cpm_rep1, codon2_cpm_rep2) %>%
+  rename(present_codon="codon2", tRNA_count = "codon2_tRNA_count", cpm_rep1 = "codon2_cpm_rep1", cpm_rep2 = "codon2_cpm_rep2") %>%
+  bind_rows(predictions_subset)
+
+tRNA_predictions_data <- left_join(tRNA_predictions, predictions, by="present_codon") %>%
+  select(-present_codon) %>%
+  distinct(missing_codon, .keep_all=TRUE)
+
+# # Arg has two missing codons served by the same present codon. Need to deal with the
+# # "duplicates" separately
+# predictions_Arg_subset <- filter(SRC_tRNA, codon2 %in% tRNA_predictions$present_codon) %>%
+#   filter(aa == "Arg") %>%
+#   filter(codon1 %in% (tRNA_predictions %>%
+#                   filter(aa=="Arg") %>%
+#                   select(missing_codon) %>%
+#                   pull())) %>%
+#   select(codon1, codon2_tRNA_count, codon2_cpm_rep1, codon2_cpm_rep2) %>%
+#   rename("codon1_tRNA_count"= codon2_tRNA_count,
+#          "codon1_cpm_rep1" = codon2_cpm_rep1, 
+#          "codon1_cpm_rep2" = codon2_cpm_rep2)
+
+
+
+# fill in missing data for codon1 codons
+tRNA_predictions_data <- tRNA_predictions_data %>%
+  rename("codon1"=missing_codon, 
+         "codon1_tRNA_count"=tRNA_count,
+         "codon1_cpm_rep1" = cpm_rep1, 
+         "codon1_cpm_rep2" = cpm_rep2
+  )
+SRC_tRNA <- SRC_tRNA %>%
+  rows_patch(y=tRNA_predictions_data, by="codon1", unmatched = "ignore") #%>%
+  #rows_patch(y=predictions_Arg_subset, by='codon1', unmatched = "ignore")
+
+# fill in missing data for codon2 codons
+tRNA_predictions_data <- tRNA_predictions_data %>%
+  rename("codon2"=codon1, 
+         "codon2_tRNA_count"=codon1_tRNA_count,
+         "codon2_cpm_rep1" = codon1_cpm_rep1, 
+         "codon2_cpm_rep2" = codon1_cpm_rep2
+  )
+SRC_tRNA <- SRC_tRNA %>%
+  rows_patch(y=tRNA_predictions_data, by="codon2", unmatched = "ignore")
+
+
+
+
+# calculate difference in isoacceptor abundance for each susbtitution
+SRC_tRNA <- SRC_tRNA %>%
+  # mutate(tRNA_count_diff = codon1_tRNA_count - codon2_tRNA_count) %>%
+  # mutate(count_diff_sq = tRNA_count_diff**2)
+  mutate(count_diff_ratio = if_else((codon1_tRNA_count/codon2_tRNA_count) > 1, true=codon1_tRNA_count/codon2_tRNA_count, false=codon2_tRNA_count/codon1_tRNA_count)) %>%
+  mutate(cpm_ratio_rep1 = if_else((codon1_cpm_rep1/codon2_cpm_rep1) > 1, true=codon1_cpm_rep1/codon2_cpm_rep1, false=codon2_cpm_rep1/codon1_cpm_rep1)) %>%
+  mutate(cpm_ratio_rep2 = if_else((codon1_cpm_rep2/codon2_cpm_rep2) > 1, true=codon1_cpm_rep2/codon2_cpm_rep2, false=codon2_cpm_rep2/codon1_cpm_rep2))
+  
+
+
+# For substitutions where each codon in a pair is served by a different tRNA with a different abundance
+# I would expect to see slower rates than for a pair of codons served by the same tRNA
+
+
+# sanity check correlate abundance with gene count. Should get ~0.7
+
+## CORRELATION WITH MEAN RATES ##
+#cor(SRC_tRNA$mean_rate, SRC_tRNA$count_diff_sq, use="pairwise.complete.obs", method="spearman") # ignore NAs as missing data, for now
+cor(SRC_tRNA$mean_rate, SRC_tRNA$count_diff_ratio, use="pairwise.complete.obs", method="spearman") # ignore NAs as missing data, for now
+
+cor(SRC_tRNA$mean_rate, SRC_tRNA$cpm_ratio_rep1, use="pairwise.complete.obs", method="spearman") # ignore NAs as missing data, for now
+cor(SRC_tRNA$mean_rate, SRC_tRNA$cpm_ratio_rep2, use="pairwise.complete.obs", method="spearman") # ignore NAs as missing data, for now
+
+## CORRELATION WITH MEDIAN RATES ##
+#cor(SRC_tRNA$median_rate, SRC_tRNA$count_diff_sq, use="pairwise.complete.obs", method="spearman") # ignore NAs as missing data, for now
+cor(SRC_tRNA$median_rate, SRC_tRNA$count_diff_ratio, use="pairwise.complete.obs", method="spearman")
+
+cor(SRC_tRNA$median_rate, SRC_tRNA$cpm_ratio_rep1, use="pairwise.complete.obs", method="spearman") 
+cor(SRC_tRNA$median_rate, SRC_tRNA$cpm_ratio_rep2, use="pairwise.complete.obs", method="spearman")
+
+
+# cor(SRC_tRNA$codon1_tRNA_count, SRC_tRNA$codon1_cpm_rep1, use="pairwise.complete.obs", method="spearman")
+# cor(SRC_tRNA$mean_rate, SRC_tRNA$median_rate, use="pairwise.complete.obs", method="spearman")
+
+
+ggplot(SRC_tRNA, aes(x=mean_rate, y=cpm_ratio_rep1, label=paste(aa, paste(codon1, codon2, sep=":"), sep="_"))) +
+  geom_point() + 
+  geom_text(hjust=0, vjust=0) +
+  xlab("Mean SynREVCodon rate") +
+  ylab("tRNA abundance ratio") +
+  theme_bw()
+
+ggplot(SRC_tRNA, aes(x=median_rate, y=cpm_ratio_rep1, label=paste(aa, paste(codon1, codon2, sep=":"), sep="_"))) +
+  geom_point() + 
+  geom_text(hjust=1, vjust=0) +
+  xlab("Median SynREVCodon rate") +
+  ylab("tRNA abundance ratio") +
+  theme_bw()
+
+
+
+
+###########################
+## SynREVCodon joint fit ##
+###########################
+# format SynREVCodon joint fit data
+joint_fit <- joint_fit %>% 
+  mutate(rate=str_remove(rate, "SynREVCodon_")) %>%
+  filter(!(rate %in% c("AIC", "omega", "non-synonymous/synonymous rate ratio"))) %>%
+  mutate(rate=str_remove(rate, "synonymous rate between codon classes ")) %>%
+  separate_wider_delim(rate, delim=" and ", names=c("codon1", "codon2"))
+
+# merge tRNA isoacceptor count data for each codon we have info on, then add my tRNA predictions
+# NA codon entries are because not all codons were listed with an isoaccpetor
+# some tRNAs serve more than one codon, BUT I'm not sure which tRNAs serve which NA codons
+
+## CODON 1 ##
+#SRC_tRNA <- 
+joint_fit_tRNA <- joint_fit %>%
+  left_join(tRNA, by=c("codon1"="codon")) %>%  # add predictions here if you can figure out the rest of the missing data
+  rename("codon1_tRNA_count"=gene_count, "anticodon1"=anticodon)
+
+## CODON 2 ##
+#joint_fit_tRNA <- 
+joint_fit_tRNA <- joint_fit_tRNA %>% 
+  left_join(tRNA, by=c("codon2"="codon", "aa"="aa")) %>%
+  rename("codon"=codon2) %>%
+  rows_update(y=tRNA_predictions, by="codon") %>%
+  rename("codon2_tRNA_count"=gene_count, "anticodon2"=anticodon, "codon2"=codon) 
+
+# calculate difference in isoacceptor abundance for each susbtitution
+joint_fit_tRNA <- joint_fit_tRNA %>%
+  mutate(tRNA_count_diff = codon1_tRNA_count - codon2_tRNA_count) %>%
+  # we only care about the magnitude of the difference (not the sign) because the rates are reversible
+  mutate(count_diff_sq = tRNA_count_diff**2) %>% 
+  # we don't care what order we take the ratio in because the rates are reversible, we only care about how far the ratio is from 1. => Normalize so that the rate ratio is always >1
+  mutate(count_diff_ratio = if_else((codon1_tRNA_count/codon2_tRNA_count) > 1, true=codon1_tRNA_count/codon2_tRNA_count, false=codon2_tRNA_count/codon1_tRNA_count)) %>%
+  mutate(anticodon1 = reverse_complement(codon1), anticodon2=reverse_complement(codon2))
+
+# For substitutions where each codon in a pair is served by a different tRNA with a different abundance
+# I would expect to see slower rates than for a pair of codons served by the same tRNA
+
+## CORRELATION WITH JOINT FIT ESTIMATED RATES (MLE) ##
+cor(joint_fit_tRNA$MLE, joint_fit_tRNA$count_diff_sq, use="pairwise.complete.obs", method="spearman") # ignore NAs as missing data, for now
+cor(joint_fit_tRNA$MLE, joint_fit_tRNA$count_diff_ratio, use="pairwise.complete.obs", method="spearman") # ignore NAs as missing data, for now
+
+
+
+
+

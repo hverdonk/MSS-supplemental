@@ -7,16 +7,10 @@ tRNA_genecounts <- read_excel("~/Dropbox/Temple/pond-lab-research/Drosophila-tRN
 # GEO Accession number GSE152621
 tRNA_abundance <- read_csv("~/Dropbox/Temple/pond-lab-research/Drosophila-tRNA/GSE152621_Dmel_anticodon_counts.csv")
 SRC <- read_csv("~/Dropbox/Temple/pond-lab-research/Drosophila-tRNA/20240321_drosophila_SynREVCodon_parsed.csv")
+SRC_high_expr <- read_csv("~/Downloads/droso_highexpr_per_gene_synrev.csv")
 joint_fit <- read_csv("https://raw.githubusercontent.com/veg/MSS-results/master/empirical-validation/drosophila/20240322-droso-500RandomAlignments-SynREVCodonjointfit-0.csv")
 # my hypotheses for which codons not present in tRNA are served by which isoacceptors
 # assume codons share an isoacceptor if they only differ at the wobble base and 
-#     - there is no other isoacceptor that only differs at the wobble base.
-#         - Tyr, His, Asn, Asp get their wobble bases modified to Queosine (https://www-ncbi-nlm-nih-gov.libproxy.temple.edu/pmc/articles/PMC8897278/)
-#     - one anticodon begins with A (which is modified to Inosine, a Guanine analog, for nearly all mature tRNAs) and the other anticodon begins with G
-#     - Crick's wobble hypothesis predicts that...
-#         - Gly: tRNA recognizing GGC also serves GGU, and the tRNA recognizing GGA also serves GGG
-#         - Arg: the tRNA recognizing CGU also serves CGC (confirmed by inosine modification) and the tRNA recognizing CGA also serves CGG
-# If a twofold redundant aa only has one isoacceptor listed, assume it translates both codons
 tRNA_predictions <- tibble(
   aa = c(
     "Ala", "Ala", "Arg", "Arg", 
@@ -29,35 +23,30 @@ tRNA_predictions <- tibble(
   ),
   main_codon = c(  # the main codon recognized by a tRNA
     "GCT", "GCT", "CGT", "CGA", 
-    "AAC", "GGC", "GGA",
-    "GAC", "TGC", "CAC", 
-    "ATT", "ATT",
-    "TTC", 
-    "CCT", "CCT", "TCT", "TCT", "AGC", 
-    "TAC", "GTT", "GTT", "CTT", "CTT", 
-    "ACT", "ACT"
+    "AAC", "GGC", "GGA", "GAC", 
+    "TGC", "CAC", "ATT", "ATT",
+    "TTC", "CCT", "CCT", "TCT", 
+    "TCT", "AGC", "TAC", "GTT", 
+    "GTT", "CTT", "CTT", "ACT", 
+    "ACT"
   ),
   other_codon = c(  # other codons served by the same tRNA
-    "GCC", "GCA",
-    "CGC", "CGG",
-    "AAT", "GGT", "GGG",
-    "GAT", "TGT", "CAT", 
-    "ATC", "ATA", 
-    "TTT", 
-    "CCC", "CCA", "TCC", "TCA", "AGT", 
-    'TAT', "GTC", "GTA", "CTC", "CTA",
-    "ACC", "ACA"
+    "GCC", "GCA", "CGC", "CGG",
+    "AAT", "GGT", "GGG", "GAT", 
+    "TGT", "CAT", "ATC", "ATA", 
+    "TTT", "CCC", "CCA", "TCC", 
+    "TCA", "AGT", 'TAT', "GTC", 
+    "GTA", "CTC", "CTA", "ACC", 
+    "ACA"
   ),
   mod = c(  # any modification (real or predicted) that allows a tRNA to recognize the other codon
-    "Inosine", "Inosine", 
-    "Inosine", "Crick wobble",
-    "Queuosine", "Crick wobble", "Crick wobble",
-    "Queuosine", "twofold", "Queuosine", 
-    "Inosine", "Inosine",
-    "twofold", 
-    "Inosine", "Inosine", "Inosine", "Inosine", "twofold",
-    "Queuosine", "Inosine", "Inosine", "Inosine", "Inosine", 
-    "Inosine", "Inosine"
+    "Inosine", "Inosine", "Inosine", "Crick wobble",
+    "Queuosine", "Crick wobble", "Crick wobble", "Queuosine", 
+    "twofold", "Queuosine", "Inosine", "Inosine",
+    "twofold", "Inosine", "Inosine", "Inosine", 
+    "Inosine", "twofold", "Queuosine", "Inosine", 
+    "Inosine", "Inosine", "Inosine", "Inosine", 
+    "Inosine"
   )
 
 )
@@ -145,13 +134,13 @@ joint_fit_clean <- joint_fit %>%
 ## SynREVCodon per-gene fits ##
 ###############################
 # format SynREVCodon per-gene data
-means <- SRC %>%
+means <- SRC %>%  # SRC_high_expr
   summarise(across(everything(), mean)) %>%
   pivot_longer(cols = everything(), names_to = "codon_pair", values_to = "mean_rate") %>%
   separate_wider_delim(codon_pair, delim="_", names=c("aa", "codons")) %>%
   separate_wider_delim(codons, delim=":", names=c("codon1", "codon2")) %>%
   full_join(amino_acids, by=c("aa"="One_Letter_Code"))
-medians <- SRC %>%
+medians <- SRC %>% #SRC_high_expr
   summarise(across(everything(), median)) %>%
   pivot_longer(cols = everything(), names_to = "codon_pair", values_to = "median_rate") %>%
   separate_wider_delim(codon_pair, delim="_", names=c("aa", "codons")) %>%
@@ -236,9 +225,11 @@ ggplot(SRC_tRNA, aes(x=mean_rate,
 ) +
   geom_point() + 
   geom_text(aes(label=paste(aa, paste(codon1, codon2, sep=":"), sep="_")), hjust=0, vjust=0) +
+  ggtitle("Correlation without predictions") +
   xlab("Mean SynREVCodon rate") +
   ylab("tRNA abundance ratio") +
-  theme_bw()
+  theme_bw() +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=14,face="bold"))
 
 ggplot(SRC_tRNA, aes(x=median_rate, 
                      y=cpm_ratio_rep1, 
@@ -246,9 +237,11 @@ ggplot(SRC_tRNA, aes(x=median_rate,
 ) +
   geom_point() + 
   geom_text(hjust=1, vjust=0) +
+  ggtitle("Correlation without predictions") +
   xlab("Median SynREVCodon rate") +
   ylab("tRNA abundance ratio") +
-  theme_bw()
+  theme_bw() +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=14,face="bold"))
 
 
 ggplot(SRC_tRNA, aes(x=jointfit, 
@@ -257,13 +250,14 @@ ggplot(SRC_tRNA, aes(x=jointfit,
 ) +
   geom_point() + 
   geom_text(aes(label=paste(aa, paste(codon1, codon2, sep=":"), sep="_")), hjust=1, vjust=0) +
-  xlab("Median SynREVCodon rate") +
+  ggtitle("Correlation without predictions") +
+  xlab("Jointfit SynREVCodon rate") +
   ylab("tRNA abundance ratio") +
-  theme_bw()
+  theme_bw() +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=14,face="bold"))
 
-# filter(SRC_tRNA, !(codon1 == "CTA" & codon2 == "CTT"))
-# test <- filter(SRC_tRNA, !(codon1 == "CTA" & codon2 == "CTT"))
-# cor(test$jointfit, test$cpm_ratio_rep1, use="pairwise.complete.obs", method="spearman")
+test <- filter(SRC_tRNA, !(codon1 == "AGA" & (codon2 == "CGA" | codon2 == "AGG")))
+cor(test$jointfit, test$cpm_ratio_rep1, use="pairwise.complete.obs", method="spearman")
 
 
 ###################################
@@ -374,25 +368,31 @@ cor(updated_SRC_tRNA$jointfit, updated_SRC_tRNA$cpm_ratio_rep2, use="pairwise.co
 
 ggplot(updated_SRC_tRNA, aes(x=mean_rate, 
                              y=cpm_ratio_rep1, 
-                             #color=mod
+                             color=mod
                              )
        ) +
   geom_point() + 
   geom_text(aes(label=paste(aa, paste(codon1, codon2, sep=":"), sep="_")), hjust=0, vjust=0) +
+  ggtitle("Correlation with predictions") +
   xlab("Mean SynREVCodon rate") +
   ylab("tRNA abundance ratio") +
-  theme_bw()
+  theme_bw() +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=14,face="bold"))
+
+
 
 ggplot(updated_SRC_tRNA, aes(x=median_rate, 
                              y=cpm_ratio_rep1, 
                              color=mod, 
-                             label=paste(aa, paste(codon1, codon2, sep=":"), sep="_"))
+                             )
        ) +
   geom_point() + 
-  geom_text(hjust=1, vjust=0) +
+  geom_text(aes(label=paste(aa, paste(codon1, codon2, sep=":"), sep="_")), hjust=1, vjust=0) +
+  ggtitle("Correlation with predictions") +
   xlab("Median SynREVCodon rate") +
   ylab("tRNA abundance ratio") +
-  theme_bw()
+  theme_bw() +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=14,face="bold"))
 
 
 
@@ -402,10 +402,12 @@ ggplot(updated_SRC_tRNA, aes(x=jointfit,
                              )
 ) +
   geom_point() + 
-  #geom_text(aes(label=paste(aa, paste(codon1, codon2, sep=":"), sep="_")), hjust=1, vjust=0) +
-  xlab("Median SynREVCodon rate") +
+  geom_text(aes(label=paste(aa, paste(codon1, codon2, sep=":"), sep="_")), hjust=1, vjust=0) +
+  ggtitle("Correlation with predictions") +
+  xlab("Jointfit SynREVCodon rate") +
   ylab("tRNA abundance ratio") +
-  theme_bw()
+  theme_bw() +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=14,face="bold"))
 
 
 

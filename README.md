@@ -1,20 +1,13 @@
 # MANIFEST
 
-## tRNA gene count numbers
-- Extended_Data_Table_1.xlsx
-- from doi: 10.17912/micropub.biology.000560    
+## tRNA analysis code
+Code to analyze the correlation between *Drosophila melanogaster* tRNA abundance and SynREVCodon estimated rates as described in Verdonk *et. al*. The script `Droso_tRNA_abundance.R` takes the tRNA transcript counts in `GSE152621_Dmel_anticodon_counts.csv` (GEO accession number GSE152621) and a user-supplied `csv` file of SynREVCodon rates (`20240321_drosophila_SynREVCodon_parsed.csv` is provided as an example). The script can be run on the command line as follows:
 
-## tRNA abundance
+```
+
+```
+
+## tRNA abundance data
 - GSE152621_Dmel_anticodon_counts.csv
-- quantified by tRNA sequencing in *Drosophila* BG3-c2 cells
-- from https://doi.org/10.1016/j.molcel.2021.01.028
-    - per this source, "The correlation between gene copy number and tRNA abundance was also lower in Drosophila BG3-c2 cells (adjusted R2 = 0.79)...consistent with differential tRNA gene use in distinct cell types (Dittmar et al., 2006; Ishimura et al., 2014; Kutter et al., 2011; Schmitt et al., 2014) and highlight that mechanisms beyond gene copy number shape metazoan tRNA pools."
+- quantified by tRNA sequencing in *Drosophila* BG3-c2 cells and represented as transcript counts (unmodified from source)
 - GEO accession number GSE152621
-
-## isodecoder abundance
-- GSE152621_Dmel_isodecoder_counts.csv
-- quantified by tRNA sequencing in *Drosophila* BG3-c2 cells
-- from https://doi.org/10.1016/j.molcel.2021.01.028
-- GEO accession number GSE152621
-- count transcripts per tRNA gene, rather than per anticodon
-- "Single_isodecoder" is because authors cluster isodecoders, align sequences, and then do deconvolution to assess which specific reference a sequence aligns with. "FALSE" means that the given gene was the dumping ground for all sequences they couldn't conclusively assign (and also for its own sequences)

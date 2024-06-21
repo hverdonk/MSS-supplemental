@@ -272,7 +272,7 @@ cor(SRC_tRNA_high_expr$mean_rate, SRC_tRNA_high_expr$cpm_ratio_rep2, use="pairwi
 ## CORRELATION WITH MEDIAN RATES ##
 # ignore NAs as missing data, for now
 # use cor.test() for p-values/correlation significance, if desired
-cor(SRC_tRNA$median_rate, SRC_tRNA$codon_freq_ratio, use="pairwise.complete.obs", method="spearman")
+cor.test(SRC_tRNA$median_rate, SRC_tRNA$codon_freq_ratio, use="pairwise.complete.obs", method="spearman")
 cor(SRC_tRNA$median_rate, SRC_tRNA$count_diff_ratio, use="pairwise.complete.obs", method="spearman")
 cor(SRC_tRNA$median_rate, SRC_tRNA$cpm_ratio_rep1, use="pairwise.complete.obs", method="spearman") 
 cor(SRC_tRNA$median_rate, SRC_tRNA$cpm_ratio_rep2, use="pairwise.complete.obs", method="spearman")
@@ -284,7 +284,7 @@ cor(SRC_tRNA_high_expr$median_rate, SRC_tRNA_high_expr$cpm_ratio_rep2, use="pair
 ## CORRELATION WITH JOINT RATES ##
 # ignore NAs as missing data, for now
 # use cor.test() for p-values/correlation significance, if desired
-cor(SRC_tRNA$jointfit, SRC_tRNA$codon_freq_ratio, use="pairwise.complete.obs", method="spearman")
+cor.test(SRC_tRNA$jointfit, SRC_tRNA$codon_freq_ratio, use="pairwise.complete.obs", method="spearman")
 cor(SRC_tRNA$jointfit, SRC_tRNA$count_diff_ratio, use="pairwise.complete.obs", method="spearman")
 cor(SRC_tRNA$jointfit, SRC_tRNA$cpm_ratio_rep1, use="pairwise.complete.obs", method="spearman") 
 cor(SRC_tRNA$jointfit, SRC_tRNA$cpm_ratio_rep2, use="pairwise.complete.obs", method="spearman")
@@ -441,8 +441,9 @@ updated_SRC_tRNA <- updated_SRC_tRNA %>%
 
 # Perform the join
 updated_SRC_tRNA <- updated_SRC_tRNA %>%
-  left_join(tRNA_predictions_data, by = c("join_key", "join_key2", "aa")) %>%
-  select(-join_key, -join_key2, -main_codon, -other_codon, -tRNA_count, -cpm_rep1, -cpm_rep2) %>%
+  left_join(tRNA_predictions_data, by = c("join_key", "join_key2")) %>%
+  select(-join_key, -join_key2, -main_codon, -other_codon, -tRNA_count, -cpm_rep1, -cpm_rep2, -aa.y) %>%
+  rename("aa" = aa.x) %>%
   mutate(mod = replace_na(mod, "none"))
   # -everything from tRNA_predictions_data except mod and identifiers
 
@@ -450,6 +451,17 @@ updated_SRC_tRNA <- updated_SRC_tRNA %>%
 # updated_SRC_tRNA_2 <- updated_SRC_tRNA_2 %>%
 #   mutate(mod = coalesce(mod.x, mod.y)) %>%
 #   select(-mod.x, -mod.y)  # Remove temporary columns if they were created during the join
+
+
+
+
+# abundance <- updated_SRC_tRNA %>%
+#   select(aa, codon1, codon2, codon1_cpm_rep1, codon2_cpm_rep1, cpm_ratio_rep1, mod) %>%
+#   rename("codon1_abundance"=codon1_cpm_rep1, 
+#          "codon2_abundance"=codon2_cpm_rep1,
+#          "abundance_ratio"=cpm_ratio_rep1)
+# 
+# write_csv(abundance, "~/Downloads/tRNA_abundance_drosophila.csv")
 
 
 cor(updated_SRC_tRNA$codon1_tRNA_count, updated_SRC_tRNA$freq1, use="pairwise.complete.obs", method="spearman")

@@ -1,26 +1,12 @@
 library(tidyverse)
-library(readxl)
 
 
-SRC <- read_csv("~/Dropbox/Temple/pond-lab-research/Drosophila-tRNA/20240321_drosophila_SynREVCodon_parsed.csv")
-joint_fit <- read_csv("https://raw.githubusercontent.com/veg/MSS-results/master/empirical-validation/drosophila/20240322-droso-500RandomAlignments-SynREVCodonjointfit-0.csv")
+# original filename: 20240322-droso-500RandomAlignments-SynREVCodonjointfit-0.csv
+joint_fit <- read_csv("./Drosophila-SynREVCodon.csv")
 
-codon_freqs <- read_csv("~/Dropbox/Temple/pond-lab-research/Drosophila-tRNA/drosophila-codon-freqs.csv")
-
-# Drosophila tRNA gene count numbers from doi: 10.17912/micropub.biology.000560
-tRNA_genecounts <- read_excel("~/Dropbox/Temple/pond-lab-research/Drosophila-tRNA/Extended_Data_Table_1.xlsx")
 # Drosophila tRNA isodecoder count numbers from https://doi.org/10.1016/j.molcel.2021.01.028
 # GEO Accession number GSE152621
-tRNA_abundance <- read_csv("~/Dropbox/Temple/pond-lab-research/Drosophila-tRNA/GSE152621_Dmel_anticodon_counts.csv")
-SRC_high_expr <- read_csv("https://raw.githubusercontent.com/veg/MSS-results/master/empirical-validation/drosophila/20240501_drosophila_high_expr_SynREVCodon.csv") %>%
-  filter(Filename != "tempin") %>%
-  select(-`SynREVCodon_non-synonymous/synonymous rate ratio`) %>%  # duplicate of SynREVCodon_omega
-  select(-Filename) %>%
-  rename_with(~gsub("SynREVCodon_", "", .x), starts_with("SynREVCodon_")) %>%
-  rename_with(~gsub("synonymous rate between codon classes ", "", .x), starts_with("synonymous rate between codon classes ")) %>%
-  rename_with(~gsub(" and ", "_", .x), contains(" and ")) %>%
-  select(-N, -omega, -AIC)
-
+tRNA_abundance <- read_csv("./GSE152621_Dmel_anticodon_counts.csv")
 
 # my hypotheses for which codons not present in tRNA are served by which isoacceptors
 # assume codons share an isoacceptor if they only differ at the wobble base and 
@@ -100,19 +86,6 @@ amino_acids <- tibble(
 ## tRNA DATA ##
 ###############
 
-# format tRNA gene count data
-tRNA_genecounts_clean <- tRNA_genecounts %>% 
-  select(`FlyBase gene symbol`) %>%
-  separate_wider_delim(`FlyBase gene symbol`, delim="-", names=c("aa", "anticodon", NA, "pseudo")) %>%
-  separate_wider_delim(aa, delim=":", names=c(NA, "aa")) %>%
-  filter(str_detect(pseudo, pattern="Psi", negate=TRUE)) %>%
-  select(-pseudo) %>%
-  mutate(codon = reverse_complement(anticodon)) %>%
-  # count number of tRNA genes per anticodon
-  group_by(aa, anticodon, codon) %>%
-  summarise(gene_count = n(), .groups = "drop")
-
-
 # normalize read counts by total number of reads sequenced
 # tRNA genes are all roughly the same length (76-90 bp) so I chose NOT to normalize
 # by transcript length
@@ -126,17 +99,15 @@ tRNA_abundance_clean <- tRNA_abundance %>%
 
 
 # drop raw count data (optional, but makes the data cleaner and easier to work with)
-tRNA_abundance_clean <- tRNA_abundance_clean %>%
-  select(-abundance_rep1, -abundance_rep2)
+# filter out nonredundant and nonstandard aa
+tRNA <- tRNA_abundance_clean %>%
+  select(-abundance_rep1, -abundance_rep2)  %>%
+  mutate(codon = reverse_complement(anticodon)) %>%
+  filter(!str_detect(aa, "iMet")) %>%
+  filter(!str_detect(aa, "Met")) %>%
+  filter(!str_detect(aa, "SeC")) %>%
+  filter(!str_detect(aa, "Trp"))
 
-tRNA <- full_join(tRNA_genecounts_clean, tRNA_abundance_clean, by=c("aa", "anticodon"))
-tRNA <- full_join(tRNA, codon_freqs, by = "codon") %>%
-  mutate(anticodon = reverse_complement(codon)) %>%
-  select(-aa) %>%
-  rename(aa = "amino_acid")
-
-cor(tRNA$gene_count, tRNA$frequency, use="pairwise.complete.obs", method="spearman")
-cor(tRNA$cpm_rep1, tRNA$frequency, use="pairwise.complete.obs", method="spearman")
 
 ###########################
 ## SynREVCodon joint fit ##
@@ -150,44 +121,6 @@ joint_fit_clean <- joint_fit %>%
   rename(jointfit = "MLE")
 
 
-###############################
-## SynREVCodon per-gene fits ##
-###############################
-# format SynREVCodon per-gene data
-means <- SRC %>%  # SRC_high_expr
-  summarise(across(everything(), mean)) %>%
-  pivot_longer(cols = everything(), names_to = "codon_pair", values_to = "mean_rate") %>%
-  separate_wider_delim(codon_pair, delim="_", names=c("aa", "codons")) %>%
-  separate_wider_delim(codons, delim=":", names=c("codon1", "codon2")) # %>%
-  # full_join(amino_acids, by=c("aa"="One_Letter_Code"))
-medians <- SRC %>% #SRC_high_expr
-  summarise(across(everything(), median)) %>%
-  pivot_longer(cols = everything(), names_to = "codon_pair", values_to = "median_rate") %>%
-  separate_wider_delim(codon_pair, delim="_", names=c("aa", "codons")) %>%
-  separate_wider_delim(codons, delim=":", names=c("codon1", "codon2")) #%>%
-  # full_join(amino_acids, by=c("aa"="One_Letter_Code"))
-
-# format SynREVCodon high expression per-gene data
-means_high_expr <- SRC_high_expr %>%
-  summarise(across(everything(), mean)) %>%
-  pivot_longer(cols = everything(), names_to = "codons", values_to = "mean_rate") %>%
-  separate_wider_delim(codons, delim="_", names=c("codon1", "codon2"))
-medians_high_expr <- SRC_high_expr %>%
-  summarise(across(everything(), median)) %>%
-  pivot_longer(cols = everything(), names_to = "codons", values_to = "median_rate") %>%
-  separate_wider_delim(codons, delim="_", names=c("codon1", "codon2"))
-
-#########################################
-## Combine SRC and Joint Fit estimates ##
-#########################################
-SRC_rollup <- full_join(means, medians) %>% 
-  filter(aa != "M", aa != "W") %>%
-  full_join(joint_fit_clean, by=c("codon1", "codon2"))
-
-SRC_rollup_high_expr <- full_join(means_high_expr, medians_high_expr) %>% 
-  full_join(joint_fit_clean, by=c("codon1", "codon2"))
-
-
 ###################
 ## Add tRNA data ##
 ###################
@@ -196,96 +129,37 @@ SRC_rollup_high_expr <- full_join(means_high_expr, medians_high_expr) %>%
 # NA codon entries are because not all codons were listed in the abundance data
 
 ## CODON 1 ##
-SRC_tRNA <- SRC_rollup %>%
-  left_join(tRNA, by=c("codon1"="codon", "aa"="aa")) %>% 
-  #select(-aa) %>%
-  rename("codon1_tRNA_count"=gene_count, 
-         "anticodon1"=anticodon, 
-         #"aa"=Three_Letter_Code, 
-         "freq1" = frequency,
+SRC_tRNA <- joint_fit_clean %>%
+  left_join(tRNA, by=c("codon1"="codon")) %>% 
+  rename("anticodon1"=anticodon, 
          "codon1_cpm_rep1" = cpm_rep1, 
          "codon1_cpm_rep2" = cpm_rep2
          ) %>%
-  mutate(anticodon1 = reverse_complement(codon1))
-
-SRC_tRNA_high_expr <- SRC_rollup_high_expr %>%
-  left_join(tRNA, by=c("codon1"="codon")) %>% 
-  rename("codon1_tRNA_count"=gene_count, 
-         "anticodon1"=anticodon, 
-         "codon1_cpm_rep1" = cpm_rep1, 
-         "codon1_cpm_rep2" = cpm_rep2
-  ) %>%
-  select(-aa) %>%
   mutate(anticodon1 = reverse_complement(codon1))
 
 
 ## CODON 2 ##
 SRC_tRNA <- SRC_tRNA %>% 
   left_join(tRNA, by=c("codon2"="codon", "aa"="aa")) %>%
-  rename("codon2_tRNA_count"=gene_count, 
-         "anticodon2"=anticodon, 
-         "freq2" = frequency,
+  rename("anticodon2"=anticodon, 
          "codon2_cpm_rep1" = cpm_rep1, 
          "codon2_cpm_rep2" = cpm_rep2
          ) %>%
   mutate(anticodon2 = reverse_complement(codon2))
 
-SRC_tRNA_high_expr <- SRC_tRNA_high_expr %>% 
-  left_join(tRNA, by=c("codon2"="codon")) %>%
-  rename("codon2_tRNA_count"=gene_count, 
-         "anticodon2"=anticodon, 
-         "codon2_cpm_rep1" = cpm_rep1, 
-         "codon2_cpm_rep2" = cpm_rep2
-  ) %>%
-  select(-aa) %>%
-  mutate(anticodon2 = reverse_complement(codon2))
-
 
 # calculate difference in isoacceptor abundance for each susbtitution
 SRC_tRNA <- SRC_tRNA %>%
-  mutate(codon_freq_ratio = if_else((freq1/freq2) > 1, true=freq1/freq2, false=freq2/freq1)) %>%
-  mutate(count_diff_ratio = if_else((codon1_tRNA_count/codon2_tRNA_count) > 1, true=codon1_tRNA_count/codon2_tRNA_count, false=codon2_tRNA_count/codon1_tRNA_count)) %>%
   mutate(cpm_ratio_rep1 = if_else((codon1_cpm_rep1/codon2_cpm_rep1) > 1, true=codon1_cpm_rep1/codon2_cpm_rep1, false=codon2_cpm_rep1/codon1_cpm_rep1)) %>%
   mutate(cpm_ratio_rep2 = if_else((codon1_cpm_rep2/codon2_cpm_rep2) > 1, true=codon1_cpm_rep2/codon2_cpm_rep2, false=codon2_cpm_rep2/codon1_cpm_rep2))
 
-SRC_tRNA_high_expr <- SRC_tRNA_high_expr %>%
-  mutate(count_diff_ratio = if_else((codon1_tRNA_count/codon2_tRNA_count) > 1, true=codon1_tRNA_count/codon2_tRNA_count, false=codon2_tRNA_count/codon1_tRNA_count)) %>%
-  mutate(cpm_ratio_rep1 = if_else((codon1_cpm_rep1/codon2_cpm_rep1) > 1, true=codon1_cpm_rep1/codon2_cpm_rep1, false=codon2_cpm_rep1/codon1_cpm_rep1)) %>%
-  mutate(cpm_ratio_rep2 = if_else((codon1_cpm_rep2/codon2_cpm_rep2) > 1, true=codon1_cpm_rep2/codon2_cpm_rep2, false=codon2_cpm_rep2/codon1_cpm_rep2))
 # For substitutions where each codon in a pair is served by a different tRNA with a different abundance
 # I would expect to see slower rates than for a pair of codons served by the same tRNA
 
 
-
-## CORRELATION WITH MEAN RATES ##
-# ignore NAs as missing data, for now
-# use cor.test() for p-values/correlation significance, if desired
-cor.test(SRC_tRNA$mean_rate, SRC_tRNA$codon_freq_ratio, use="pairwise.complete.obs", method="spearman") 
-cor(SRC_tRNA$mean_rate, SRC_tRNA$count_diff_ratio, use="pairwise.complete.obs", method="spearman") 
-cor(SRC_tRNA$mean_rate, SRC_tRNA$cpm_ratio_rep1, use="pairwise.complete.obs", method="spearman") 
-cor(SRC_tRNA$mean_rate, SRC_tRNA$cpm_ratio_rep2, use="pairwise.complete.obs", method="spearman")
-
-cor(SRC_tRNA_high_expr$mean_rate, SRC_tRNA_high_expr$count_diff_ratio, use="pairwise.complete.obs", method="spearman") 
-cor(SRC_tRNA_high_expr$mean_rate, SRC_tRNA_high_expr$cpm_ratio_rep1, use="pairwise.complete.obs", method="spearman") 
-cor(SRC_tRNA_high_expr$mean_rate, SRC_tRNA_high_expr$cpm_ratio_rep2, use="pairwise.complete.obs", method="spearman")
-
-## CORRELATION WITH MEDIAN RATES ##
-# ignore NAs as missing data, for now
-# use cor.test() for p-values/correlation significance, if desired
-cor.test(SRC_tRNA$median_rate, SRC_tRNA$codon_freq_ratio, use="pairwise.complete.obs", method="spearman")
-cor(SRC_tRNA$median_rate, SRC_tRNA$count_diff_ratio, use="pairwise.complete.obs", method="spearman")
-cor(SRC_tRNA$median_rate, SRC_tRNA$cpm_ratio_rep1, use="pairwise.complete.obs", method="spearman") 
-cor(SRC_tRNA$median_rate, SRC_tRNA$cpm_ratio_rep2, use="pairwise.complete.obs", method="spearman")
-
-cor(SRC_tRNA_high_expr$median_rate, SRC_tRNA_high_expr$count_diff_ratio, use="pairwise.complete.obs", method="spearman") 
-cor(SRC_tRNA_high_expr$median_rate, SRC_tRNA_high_expr$cpm_ratio_rep1, use="pairwise.complete.obs", method="spearman") 
-cor(SRC_tRNA_high_expr$median_rate, SRC_tRNA_high_expr$cpm_ratio_rep2, use="pairwise.complete.obs", method="spearman")
-
 ## CORRELATION WITH JOINT RATES ##
 # ignore NAs as missing data, for now
 # use cor.test() for p-values/correlation significance, if desired
-cor.test(SRC_tRNA$jointfit, SRC_tRNA$codon_freq_ratio, use="pairwise.complete.obs", method="spearman")
-cor(SRC_tRNA$jointfit, SRC_tRNA$count_diff_ratio, use="pairwise.complete.obs", method="spearman")
 cor(SRC_tRNA$jointfit, SRC_tRNA$cpm_ratio_rep1, use="pairwise.complete.obs", method="spearman") 
 cor(SRC_tRNA$jointfit, SRC_tRNA$cpm_ratio_rep2, use="pairwise.complete.obs", method="spearman")
 

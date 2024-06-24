@@ -1,0 +1,26 @@
+aa,main_codon,other_codon,mod
+Ala,GCT,GCC,Inosine
+Ala,GCT,GCA,Inosine
+Arg,CGT,CGC,Inosine
+Arg,CGA,CGG,Crick wobble
+Asn,AAC,AAT,Queuosine
+Gly,GGC,GGT,Crick wobble
+Gly,GGA,GGG,Crick wobble
+Asp,GAC,GAT,Queuosine
+Cys,TGC,TGT,twofold
+His,CAC,CAT,Queuosine
+Ile,ATT,ATC,Inosine
+Ile,ATT,ATA,Inosine
+Phe,TTC,TTT,twofold
+Pro,CCT,CCC,Inosine
+Pro,CCT,CCA,Inosine
+Ser,TCT,TCC,Inosine
+Ser,TCT,TCA,Inosine
+Ser,AGC,AGT,twofold
+Tyr,TAC,TAT,Queuosine
+Val,GTT,GTC,Inosine
+Val,GTT,GTA,Inosine
+Leu,CTT,CTC,Inosine
+Leu,CTT,CTA,Inosine
+Thr,ACT,ACC,Inosine
+Thr,ACT,ACA,Inosine

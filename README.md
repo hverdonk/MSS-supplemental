@@ -7,6 +7,3 @@ Contains data, code, and instructions to correlate tRNA abundances with estimate
 
 ## SNP-density-correlation
 Contains data, code, and instructions to correlate SNP density with estimated MSS rates.
-
-## D12_codon_usage.csv
-Codon usage numbers for each gene for all twelve *Drosophila* species included in our analyses.

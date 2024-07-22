@@ -1,12 +1,12 @@
 # MANIFEST
 
-All data and analyses are elucidated in Verdonk *et. al* 2024.
+This repository archives data and code used in Verdonk *et al.* 2024. 
 
 ## tRNA-correlation
-Contains code and data to correlate tRNA abundances with estimated MSS rates.
+Contains data, code, and instructions to correlate tRNA abundances with estimated MSS rates.
 
-## mean_SNP_densities.csv
-Mean density of single nucleotide polymorphisms (SNPs) calculated for each pair of codons reachable by a single nucleotide substitution in *Drosophila melanogaster*.
+## SNP-density-correlation
+Contains data, code, and instructions to correlate SNP density with estimated MSS rates.
 
 ## D12_codon_usage.csv
 Codon usage numbers for each gene for all twelve *Drosophila* species included in our analyses.

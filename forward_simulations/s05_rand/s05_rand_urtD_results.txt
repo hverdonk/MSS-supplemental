@@ -1,0 +1,83 @@
+mss_sim
+
+arguments:
+	bacaligndir: ./alignments
+	basename: s05_rand
+	debug: False
+	ranseed: 17248084
+	fdir: ./out/s05_rand
+	genename: urtD
+	numSpecies: 11
+	aalength: 300
+	mssmodelfilename: MSS_SINGLE_NEUTRAL_SETS.tsv
+	popsize: 500
+	turnoffmut: 0
+	rdir: ./out/s05_rand
+	treerescaler: 1.0
+	SynSel_s: 0.5
+	NonSyn_s: 10.0
+	mutationexpectation: 1.604
+	adaptchangerate: 0.0
+	savesubtimeinfo: False
+	commandstring: -A ./alignments -b s05_rand -N 500 -L 300 -u 1.604 -s 0.5 -y 10.0 -k 11 -m MSS_SINGLE_NEUTRAL_SETS.tsv -R ./out/s05_rand -e 17248084 -g urtD_8_species_aligned.fasta
+	meannumfits: 20.418105427567358
+	popsize2: 1000
+	defaulttreeDepth: 100000
+	mutrate: 1.6040000000000002e-05
+	treeDepth: 100000
+	SynSelDel_s_rescaled: 0.9995
+	SynSelFav_s_rescaled: 1.0005002501250624
+	NonSyn_s_rescaled: 0.99
+	fitnessstructure:  - printed only in debug mode
+	mutstructure:  - printed only in debug mode
+	neutralsets: {'I': [['ATT'], ['ATC', 'ATA']], 'L': [['CTT', 'CTA', 'CTG', 'CTC'], ['TTG', 'TTA']], 'V': [['GTT', 'GTC'], ['GTA', 'GTG']], 'F': [['TTT', 'TTC']], 'C': [['TGT'], ['TGC']], 'A': [['GCG', 'GCT', 'GCA', 'GCC']], 'G': [['GGA', 'GGC', 'GGT'], ['GGG']], 'P': [['CCA', 'CCC', 'CCT', 'CCG']], 'T': [['ACC', 'ACT'], ['ACG', 'ACA']], 'S': [['AGT', 'TCG', 'TCT', 'AGC', 'TCA', 'TCC']], 'Y': [['TAC', 'TAT']], 'Q': [['CAA'], ['CAG']], 'N': [['AAT'], ['AAC']], 'H': [['CAT'], ['CAC']], 'E': [['GAA', 'GAG']], 'D': [['GAT'], ['GAC']], 'K': [['AAA'], ['AAG']], 'R': [['CGC', 'CGT'], ['CGA', 'AGA', 'AGG', 'CGG']]}
+	codon_substitution_time_info_dict:  - printed only in debug mode
+	ancestor: CAAACGGAGGCTATGCGGTTTAAGAATGCTGTCTCCGTGGGTCCAACTCTCGAAACGCTTACACAGGTCCTCATGGACGCAAATGGCCTCGCGAAACTTGATGCGACCGAAGAAGAGGAAAAAGCGGGGCGCGATGGTCGCTTACAATCATATAAACAGAAAGACATCCTTCTCACCAGTGAACGTGTCCAGCAAGAAGTTCTAGCAGGACGCGAGAATTTGACACTCCTAGATCGCAACGCGCTACTACATGAACACGAGGAATCCTCCTTAAGGAAAGTTGAACTCGTGCTCCTCCTAGTTGAATTAGGAGCAGAGCGCCATGTTACCGAAATTACTCAGAAAGTTGAGCTCACCTTCGGTATTGATTGGCTGTGTGAGTTCCCGATGCCCCTAGGGGGGTACCTTGAGGCCGTAACTGAGAAACAACGCGTCCAAAATAATACCACTGGGACAACAGGGGAGCTCTCCCACGGACTTGCATTTCTAGATAATGTCGGGTTCAAGCGTCTCGAGGAGGGGCTATTACTGCAGGTCGCTACGGCCAGTACGTTAGTTTTCTTCGCGCTTGGCCCCGAGCAAGATATGATTAATTCGGTCAAAGCTGTTCTAGAGACCGAGGAGGATGACTTTTTCCAACTTGCTAATCAATGTCAAGAAGTCACTGGCGATTCTGTCGAAGAAATTCAAGTCTTACAACAGCATAAACTCGGCCATGCAAATTTTGCGCTTGCAATTCTCATACATAATGCGCAACAAGGCCAACATAATCTACTCTTCGAATGTGATCGCATGATGCAGAACTTCGTCTCTCAGATTTTCGCATTGACTACGCCGTTGGAGCATAAAGTGGCACTTGAACATACACTGATCTCTAACGCGGAGCTCTATCCTCTTCCA
+	ancestorfitness: 0.973841589962245
+	resultsfilename: ./out/s05_rand/s05_rand_urtD_results.txt
+	fastafilename: ./out/s05_rand/s05_rand_urtD.fa
+	tree: ((((p1,(p5,p6)),(p4,((p8,p9),p7))),(p3,p10)),(p2,p11));
+	split_generations: {1: ['p1', 1, None], 2: ['p2', 0.0, 'p1'], 3: ['p3', 0.1475, 'p1'], 4: ['p4', 0.3268, 'p1'], 5: ['p11', 0.4, 'p2'], 6: ['p7', 0.4062, 'p4'], 7: ['p5', 0.4326, 'p1'], 8: ['p10', 0.5458, 'p3'], 9: ['p8', 0.5855, 'p7'], 10: ['p6', 0.8383, 'p5'], 11: ['p9', 0.9148, 'p8']}
+	mean_branches_root_to_tip: 4.091
+	burn1_generation_time: 200000
+	burn1_mean_fitness: 0.8467323861089352
+	burn2_generation_time: 492
+	mutationexpectation_adjusted_for_burn2: 1.5961469569716993
+
+Final Mean Fitness: 0.8395
+
+Mean number of fitness values each generation: 20.4
+Mean number of individuals per fitness value: 49.0
+
+Sampled Individual Fitnesses: [0.8615145598314945, 0.8359267158899375, 0.8217539565897746, 0.8567470743331083, 0.8537529537486882, 0.8392779586501022, 0.847331636031089, 0.8376006612301534, 0.8127230839909573, 0.8350909981557277, 0.8325490287137081]
+
+Sampled Individual Mutation Counts (['NonSyn_Del', 'NonSyn_Fav', 'Synon_Sel', 'Synon_Neu', 'Stop']): [[79, 0, 125, 229, 0], [75, 0, 159, 224, 0], [74, 0, 133, 204, 0], [65, 0, 146, 184, 0], [79, 0, 155, 198, 0], [78, 0, 145, 194, 0], [84, 0, 122, 205, 0], [72, 0, 133, 237, 0], [88, 0, 135, 191, 0], [84, 0, 123, 202, 0], [88, 0, 137, 194, 0]]
+
+Mutation Total Counts/Rates
+	mutation_type    total_count  effective_#bp  proportions	mutations_per_effective_bp:
+	NonSyn            	     8789039	651.5	 0.724	1.35e+04
+	NonSyn_Deleterious	     8789039	651.5	 0.724	1.35e+04
+	NonSyn_Favored    	           0	0.0	     0	nan
+	Synon             	     2865422	212.4	 0.236	1.35e+04
+	Synon_Selected    	     1108845	82.2	0.0913	1.35e+04
+	Synon_Neutral     	     1756577	130.2	 0.145	1.35e+04
+	STOP              	      486636	36.1	0.0401	1.35e+04
+
+Substitution Counts/Rates
+	substitution_type	count_per_gene	per_effective_bp	per_effective_bp_per_branch	per_effective_bp_per_generation
+	NonSyn            	78.7	0.121	0.0295	1.2e-06
+	NonSyn_Deleterious	78.7	0.121	0.0295	1.2e-06
+	NonSyn_Favored    	 0.0	 nan	nan	nan
+	Synon             	343.2	1.62	0.395	1.61e-05
+	Synon_Selected    	137.5	1.67	0.409	1.67e-05
+	Synon_Neutral     	205.6	1.58	0.386	1.57e-05
+	STOP              	 0.0	   0	  0	0
+
+Rate Ratios:
+		dN*/dS (Nonsynonymous_deleterious/Synonymous (selected and neutral)	0.0748
+		dN/dS (Nonsynonymous_total/Synonymous (selected and neutral)    	0.0748
+		dN*/dSn (Nonsynonymous_deleterious/Synonymous_Neu)              	0.0765
+		dN/dSn (Nonsynonymous_total/Synonymous_Neu)                     	0.0765
+		dSs/dSn (Synonymous_Sel/Synonymous_Neu)                         	1.06
+
+total time: 02:05:38
